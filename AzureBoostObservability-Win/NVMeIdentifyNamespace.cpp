@@ -102,6 +102,7 @@ int nvmeIdentifyNamespace(const char* _strDeviceNo, HANDLE _hDevice, __out_bcoun
 
     // Calculate disk size in GiB
     diskSizeGiB = static_cast<double>(namespaceSize) * sectorSize / (1024.0 * 1024.0 * 1024.0);
+    diskSizeGiB = round(diskSizeGiB * 100) / 100;
 
     // Format NGUID (16 bytes)
     for (int i = 0; i < 16; i++) {
