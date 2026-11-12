@@ -39,9 +39,9 @@ class nvme_admin_command(Structure):
 
 class nvme_get_stats_logpage(Structure):
     _fields_ = [("version", c_uint64),              # version of the log page format
-                ("feature_available", c_uint64),    # indicates whether the performance statistics feature is available
-                ("is_degraded", c_uint64),          # indicates whether the volume is in degraded performance state
-                ("metadata_reserved", c_uint8 * (0x100 - 3 * sizeof(c_uint64))),  # reserved for future metadata
+                ("feature_available", c_uint8),     # indicates whether the performance statistics feature is available
+                ("is_degraded", c_uint8),           # indicates whether the volume is in degraded performance state
+                ("metadata_reserved", c_uint8 * (0x100 - sizeof(c_uint64) - 2 * sizeof(c_uint8))),  # reserved for future metadata
                 ("total_read_ops", c_uint64),       # total number of read operations
                 ("total_write_ops", c_uint64),      # total number of write operations
                 ("total_read_bytes", c_uint64),     # total bytes read
@@ -55,11 +55,12 @@ class nvme_get_stats_logpage(Structure):
                 ("read_dispatch_latency_avg", c_uint64),  #  average dispatch latency for disk read I/O operations
                 ("write_dispatch_latency_max", c_uint64), #  maximum observed dispatch latency for disk write I/O operations
                 ("write_dispatch_latency_avg", c_uint64), #  average dispatch latency for disk write I/O operations
-                ("_reserved", c_uint8 * (0x1000 - 15 * sizeof(c_uint64))),  # reserved for future counters
+                ("_reserved", c_uint8 * (0x1000 - 0x100 - 13 * sizeof(c_uint64))),  # reserved for future counters
                 ]
 
     def __str__(self):
         out = ""
+        out += f"  LogPage Version: {self.version}\n"
         out += f"  Degraded performance: {'Yes' if self.is_degraded else 'No'}\n"
         out += f"  Total Ops\n"
         out += f"    Read Ops: {self.total_read_ops}\n"
@@ -78,17 +79,17 @@ class nvme_get_stats_logpage(Structure):
         out += f"    Read Dispatch Latency Avg: {self.read_dispatch_latency_avg}\n"
         out += f"    Write Dispatch Latency Max: {self.write_dispatch_latency_max}\n"
         out += f"    Write Dispatch Latency Avg: {self.write_dispatch_latency_avg}\n"
-        out += f"\n";
+        out += f"\n"
 
         return out
 
     def to_dict(self):
         return {
             "is_degraded": self.is_degraded,
-            "reads": self.total_read_ops,
-            "writes": self.total_write_ops,
-            "read_bytes": self.total_read_bytes,
-            "write_bytes": self.total_write_bytes,
+            "total_read_ops": self.total_read_ops,
+            "total_write_ops": self.total_write_ops,
+            "total_read_bytes": self.total_read_bytes,
+            "total_write_bytes": self.total_write_bytes,
             "outstanding_io": self.outstanding_io,
             "read_latency_max": self.read_latency_max,
             "read_latency_avg": self.read_latency_avg,
@@ -99,6 +100,95 @@ class nvme_get_stats_logpage(Structure):
             "write_dispatch_latency_max": self.write_dispatch_latency_max,
             "write_dispatch_latency_avg": self.write_dispatch_latency_avg
         }
+
+class nvme_get_stats_logpage_legacy(Structure):
+    _fields_ = [("is_degraded", c_uint8),            # indicates whether the volume is in degraded performance state
+                ("_padding", c_uint8 * 7),          # padding for alignment
+                ("total_read_ops", c_uint64),       # total number of read operations
+                ("total_write_ops", c_uint64),      # total number of write operations
+                ("total_read_bytes", c_uint64),     # total bytes read
+                ("total_write_bytes", c_uint64),    # total bytes written
+                ("outstanding_io", c_uint64),       # current volume queue length
+                ("bqe_read_latency_max", c_uint64),     #  maximum observed latency for disk read I/O operations
+                ("bqe_read_latency_avg", c_uint64),     #  average latency for disk read I/O operations
+                ("bqe_write_latency_max", c_uint64),    #  maximum observed latency for disk write I/O operations
+                ("bqe_write_latency_avg", c_uint64),    #  average latency for disk write I/O operations
+                ("sched_read_disk_latency_max", c_uint64),  #  maximum observed dispatch latency for disk read I/O operations
+                ("sched_read_disk_latency_avg", c_uint64),  #  average dispatch latency for disk read I/O operations
+                ("sched_write_disk_latency_max", c_uint64), #  maximum observed dispatch latency for disk write I/O operations
+                ("sched_write_disk_latency_avg", c_uint64), #  average dispatch latency for disk write I/O operations
+                ("_reserved", c_uint8 * (0x1000 - 14 * sizeof(c_uint64)))]  # reserved for future counters
+    def __str__(self):
+        out = ""
+        out += f"  LogPage Version: Legacy\n"
+        out += f"  Degraded performance: {'Yes' if self.is_degraded else 'No'}\n"
+        out += f"  Total Ops\n"
+        out += f"    Read Ops: {self.total_read_ops}\n"
+        out += f"    Write Ops: {self.total_write_ops}\n"
+        out += f"  Total Bytes\n"
+        out += f"    Read Bytes: {self.total_read_bytes}\n"
+        out += f"    Write Bytes: {self.total_write_bytes}\n"
+        out += f"  Outstanding I/Os: {self.outstanding_io}\n"
+        out += f"  Ops Latency Max/Avg (us)\n"
+        out += f"    Read Latency Max: {self.bqe_read_latency_max}\n"
+        out += f"    Read Latency Avg: {self.bqe_read_latency_avg}\n"
+        out += f"    Write Latency Max: {self.bqe_write_latency_max}\n"
+        out += f"    Write Latency Avg: {self.bqe_write_latency_avg}\n"
+        out += f"  Dispatch Latency Max/Avg (us)\n"
+        out += f"    Read Dispatch Latency Max: {self.sched_read_disk_latency_max}\n"
+        out += f"    Read Dispatch Latency Avg: {self.sched_read_disk_latency_avg}\n"
+        out += f"    Write Dispatch Latency Max: {self.sched_write_disk_latency_max}\n"
+        out += f"    Write Dispatch Latency Avg: {self.sched_write_disk_latency_avg}\n"
+        out += f"\n"
+        return out
+
+    def to_dict(self):
+        return {
+            "is_degraded": self.is_degraded,
+            "total_read_ops": self.total_read_ops,
+            "total_write_ops": self.total_write_ops,
+            "total_read_bytes": self.total_read_bytes,
+            "total_write_bytes": self.total_write_bytes,
+            "outstanding_io": self.outstanding_io,
+            "read_latency_max": self.bqe_read_latency_max,
+            "read_latency_avg": self.bqe_read_latency_avg,
+            "write_latency_max": self.bqe_write_latency_max,
+            "write_latency_avg": self.bqe_write_latency_avg,
+            "read_dispatch_latency_max": self.sched_read_disk_latency_max,
+            "read_dispatch_latency_avg": self.sched_read_disk_latency_avg,
+            "write_dispatch_latency_max": self.sched_write_disk_latency_max,
+            "write_dispatch_latency_avg": self.sched_write_disk_latency_avg
+        }
+
+def is_log_page_legacy_format(log_page, legacy_log_page):
+    counter_size = 13 * sizeof(c_uint64)
+    current_offset = nvme_get_stats_logpage.total_read_ops.offset
+    legacy_offset = nvme_get_stats_logpage_legacy.total_read_ops.offset
+    current_bytes = bytes(log_page)
+    legacy_bytes = bytes(legacy_log_page)
+
+    current_counters_are_zero = not any(current_bytes[current_offset:current_offset + counter_size])
+    legacy_counters_are_zero = not any(legacy_bytes[legacy_offset:legacy_offset + counter_size])
+    # Skip total_read_ops: it overlaps the current metadata flags.
+    legacy_counters_are_zero_after_metadata = not any(
+        legacy_bytes[legacy_offset + sizeof(c_uint64):legacy_offset + counter_size]
+    )
+
+    if log_page.is_degraded == 1 and log_page.version == 0 and log_page.feature_available == 0:
+        # Legacy total_read_ops == 256 overlaps the current degraded flag, but completed reads
+        # also have nonzero total_read_bytes, so a valid legacy page fails the zero-counter check.
+        if current_counters_are_zero and legacy_counters_are_zero_after_metadata:
+            return False  # current degraded
+        else:
+            return True  # legacy non degraded
+    # compare version instead of legacy is_degraded to take into account versions of 2 and above
+    if log_page.version == 0:
+        return True # legacy non degraded
+    if log_page.version == 1:
+        if current_counters_are_zero and legacy_counters_are_zero:
+            return True  # legacy degraded
+    return False
+
 
 class nvme_get_identify_namespace_data(Structure):
     #NVME_IDENTIFY_NAMESPACE_DATA
@@ -125,7 +215,8 @@ class nvme_get_identify_namespace_data(Structure):
             sector_size = 1 << lba_data_size
         # calculate disk size in GiB based on the number of sectors and sector size
         self.disk_size_gib = nsze * sector_size / (1024 ** 3)
-
+        self.disk_size_gib = round(self.disk_size_gib, 2)
+        
         # process NGUID field
         nguid_bytes = bytes(self.NGUID)
 
@@ -137,15 +228,17 @@ class nvme_get_identify_namespace_data(Structure):
 
         # Decode VS, strip trailing nulls and any leading nulls
         self.name_str = bytes(self.VS).decode(errors='ignore').rstrip('\0')
+        if(len(self.name_str) == 0):
+            self.name_str = "undefined"
 
     def __str__(self):
         self.process_fields()
         out = ""
         out += f"  NGUID: {self.nguid}"
         out += f"\n"
-        out += f"  Disk Size (GiB): {self.disk_size_gib:.2f}"
+        out += f"  Disk Size: {self.disk_size_gib:.2f} GiB"
         out += f"\n"
-        out += f"  Identify data: {self.name_str}"
+        out += f"  Vendor Specific: {self.name_str}"
         out += f"\n"
         return out
     
@@ -182,6 +275,9 @@ class nvme_performance_stats(nvme_device):
             cdw10=(NVME_PERF_STATS_LOGPAGE_ID | (1023 << 16))
         )
         self._nvme_ioctl(admin_cmd)
+        stats_legacy = nvme_get_stats_logpage_legacy.from_buffer(stats)
+        if is_log_page_legacy_format(stats, stats_legacy):
+            return stats_legacy
         return stats
 
 class nvme_identify_namespace_data(nvme_device):
