@@ -39,6 +39,31 @@ union NVME_PERF_STATS_LOG_PAGE {
     uint8_t _reserved[0x1000]; // Pad to 0x1000 bytes (4096 bytes)
 };
 
-#pragma pack (pop)
 
 static_assert(sizeof(NVME_PERF_STATS_LOG_PAGE) == 0x1000, "NVME_PERF_STATS_LOG_PAGE is not exactly 0x1000 bytes");
+
+
+struct NVME_PERF_STATS_LOG_PAGE_LEGACY
+{
+    bool        is_degraded;
+
+    uint64_t    total_read_ops;
+    uint64_t    total_write_ops;
+    uint64_t    total_read_bytes;
+    uint64_t    total_write_bytes;
+    uint64_t    outstanding_io;
+    uint64_t    bqe_read_latency_max;
+    uint64_t    bqe_read_latency_avg;
+    uint64_t    bqe_write_latency_max;
+    uint64_t    bqe_write_latency_avg;
+    uint64_t    sched_read_disk_latency_max;
+    uint64_t    sched_read_disk_latency_avg;
+    uint64_t    sched_write_disk_latency_max;
+    uint64_t    sched_write_disk_latency_avg;
+
+    uint8_t     _reserved[0x1000 - 14 * sizeof(uint64_t)]; // Pad to 0x1000 bytes (4096 bytes)
+};
+
+#pragma pack (pop)
+
+static_assert(sizeof(NVME_PERF_STATS_LOG_PAGE_LEGACY) == 0x1000, "NVME_PERF_STATS_LOG_PAGE_LEGACY is not exactly 0x1000 bytes");
